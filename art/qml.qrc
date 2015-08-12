@@ -1,6 +1,7 @@
 <RCC>
     <qresource prefix="/">
         <file>main.qml</file>
-        <file>MainForm.ui.qml</file>
+        <file>sample.jpg</file>
+        <file>machine.wav</file>
     </qresource>
 </RCC>
