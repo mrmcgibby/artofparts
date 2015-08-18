@@ -5,16 +5,25 @@ import QtMultimedia 5.0
 import QtQuick.Dialogs 1.2
 import QtQuick.Layouts 1.1
 import QtQuick.Controls 1.2
+import Qt.labs.settings 1.0
 
 ApplicationWindow {
+    id: app_window
     title: qsTr("Art of Parts")
     visible: true
 
-    property size imageSize: "400x200"
+    property size imageSize: "1265x645"
     property int time1: 17000
     property int time2: 2000
     property date start_date: "2000-01-01"
     property date end_date: "2030-01-01"
+
+    Settings {
+        property alias s_final_color: final_color.color
+        property alias s_label_color: label_color.color
+        property alias s_border_color: border_color.color
+        property alias s_highlight_color: highlight_color.color
+    }
 
     menuBar: MenuBar {
         Menu {
@@ -22,6 +31,22 @@ ApplicationWindow {
             MenuItem {
                 text: qsTr("&Load Orders")
                 onTriggered: load();
+            }
+            MenuItem {
+                text: qsTr("Final Color")
+                onTriggered: final_color.open();
+            }
+            MenuItem {
+                text: qsTr("Label Color")
+                onTriggered: label_color.open();
+            }
+            MenuItem {
+                text: qsTr("Border Color")
+                onTriggered: border_color.open();
+            }
+            MenuItem {
+                text: qsTr("Highlight Color")
+                onTriggered: highlight_color.open();
             }
             MenuItem {
                 text: qsTr("E&xit")
@@ -32,6 +57,26 @@ ApplicationWindow {
                 onTriggered: settings.open();
             }
         }
+    }
+
+    ColorDialog {
+        id: final_color
+        color: "black"
+    }
+
+    ColorDialog {
+        id: label_color
+        color: "white"
+    }
+
+    ColorDialog {
+        id: border_color
+        color: "white"
+    }
+
+    ColorDialog {
+        id: highlight_color
+        color: "white"
     }
 
     Dialog {
@@ -51,12 +96,18 @@ ApplicationWindow {
                 id: end_date_text
                 placeholderText: "2015-01-01"
             }
+            Label { text: "Show Image" }
+            CheckBox {
+                id: show_image
+                checked: false
+            }
         }
+    }
 
-        onAccepted: {
-            start_date = new Date(start_date_text.text);
-            end_date = new Date(end_date_text.text);
-        }
+    MessageDialog {
+        id: noDataDialog
+        title: "No orders found"
+        text: "No orders found"
     }
 
     SoundEffect {
@@ -66,7 +117,18 @@ ApplicationWindow {
 
     function load() {
         balance.size = imageSize;
-        getData("https://artofparts.com/blog/wc-api/v2/orders?filter[meta]=true&consumer_key=ck_7d156b157a9b71ed486a929a1ef13d16&consumer_secret=cs_4262136394a425b2871b01dfce1bc27b");
+        var endpoint = "https://artofparts.com/blog/wc-api/v2/orders?";
+        endpoint = endpoint + "filter[meta]=true&"
+        if (start_date_text.length > 0) {
+            endpoint = endpoint + "filter[created_at_min]=" + start_date_text.text + "&";
+        }
+        if (end_date_text.length > 0) {
+            endpoint = endpoint + "filter[created_at_max]=" + end_date_text.text + "&";
+        }
+        endpoint = endpoint + "filter[limit]=500&"
+        endpoint = endpoint + "consumer_key=ck_7d156b157a9b71ed486a929a1ef13d16&"
+        endpoint = endpoint + "consumer_secret=cs_4262136394a425b2871b01dfce1bc27b"
+        getData(endpoint);
     }
 
     function getData(url) {
@@ -86,6 +148,11 @@ ApplicationWindow {
         var prices = {};
 
         balance.clear();
+        if (data.orders.length === 0) {
+            noDataDialog.open();
+            return;
+        }
+
         for (var i = 0; i < data.orders.length; i += 1) {
             var order = data.orders[i];
             var first = order.customer.first_name;
@@ -124,7 +191,7 @@ ApplicationWindow {
     }
 
     function gray(index) {
-        return Qt.hsla(0, 0, (index % 8) / 8)
+        return Qt.hsla(0, 0, (index % 8) / 8, 1)
     }
 
     Item {
@@ -140,6 +207,7 @@ ApplicationWindow {
         Image {
             anchors.fill: image
             source: "sample.jpg"
+            visible: show_image.checked
         }
 
         Rectangle {
@@ -161,12 +229,20 @@ ApplicationWindow {
         Repeater {
             model: balance
             Rectangle {
+                z: 0
                 property real ratio: parent.ratio
                 x: parent.imageRect.x + parent.ratio * display.x
                 y: parent.imageRect.y + parent.ratio * display.y
                 width: parent.ratio * display.width
                 height: parent.ratio * display.height
-                border.color: "white"
+                border.color: border_color.color
+
+                MouseArea {
+                    id: mouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                }
+                color: mouseArea.containsMouse ? highlight_color.color : final_color.color
 
                 Behavior on x { SmoothedAnimation { duration: balance.interval } }
                 Behavior on y { SmoothedAnimation { duration: balance.interval } }
@@ -175,11 +251,12 @@ ApplicationWindow {
 
                 ColorAnimation on color {
                     from: gray(index)
-                    to: "#BBEEEEEE"
+                    to: final_color.color
                     duration: time1
                 }
 
                 Label {
+                    z: 10
                     text: name
                     color: "transparent"
                     anchors.centerIn: parent
@@ -187,7 +264,7 @@ ApplicationWindow {
                     SequentialAnimation on color {
                         PauseAnimation { duration: time1 }
                         ColorAnimation {
-                            to: "black"
+                            to: label_color.color
                             duration: time2
                         }
                     }
@@ -219,7 +296,7 @@ ApplicationWindow {
                 width: 14
                 height: width
                 radius: width/2
-                border.color: "white"
+                border.color: border_color.color
 
                 Behavior on x { SmoothedAnimation { duration: balance.interval } }
                 Behavior on y { SmoothedAnimation { duration: balance.interval } }
@@ -235,7 +312,7 @@ ApplicationWindow {
                 SequentialAnimation on color {
                     ColorAnimation {
                         from: gray(index)
-                        to: "#BBEEEEEE"
+                        to: final_color.color
                         duration: time1
                     }
                     ColorAnimation {
