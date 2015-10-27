@@ -78,7 +78,15 @@ void BalanceModel::clear()
 
 void BalanceModel::addBox(QString name, double size)
 {
-    m_boxes.push_back(box(size, name.toStdString()));
+    auto i = find_if(m_boxes.begin(), m_boxes.end(), [name](const box& b) {
+        return b.name() == name.toStdString();
+    });
+
+    if (i == m_boxes.end()) {
+        m_boxes.push_back(box(size, name.toStdString()));
+    } else {
+        *i = box(size + i->size(), name.toStdString());
+    }
 }
 
 void BalanceModel::addDesired(QPoint p, int index)
