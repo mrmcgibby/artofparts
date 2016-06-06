@@ -1,10 +1,9 @@
-import QtQuick 2.4
+import QtQuick 2.0
 import QtQuick.Controls 1.3
 import QtQuick.Window 2.2
 import QtMultimedia 5.0
 import QtQuick.Dialogs 1.2
 import QtQuick.Layouts 1.1
-import QtQuick.Controls 1.2
 import Qt.labs.settings 1.0
 
 ApplicationWindow {
@@ -17,19 +16,26 @@ ApplicationWindow {
     property int time2: 2000
     property date start_date: "2000-01-01"
     property date end_date: "2030-01-01"
+    property string spreadsheet_id: "1bUNb5hSefnILVJKG16X3cqgCXXU1Tkyn6eHzHpyP7F8"
+    property var colors: []
 
     Settings {
         property alias s_final_color: final_color.color
         property alias s_label_color: label_color.color
         property alias s_border_color: border_color.color
         property alias s_highlight_color: highlight_color.color
+        property alias s_spreadsheet_id: settings.grid.spreadsheet_id_text.text
     }
 
     menuBar: MenuBar {
         Menu {
             title: qsTr("&File")
             MenuItem {
-                text: qsTr("&Load Orders")
+                text: qsTr("&Load Orders from Spreadsheet")
+                onTriggered: load_sheet();
+            }
+            MenuItem {
+                text: qsTr("&Load Orders from Shop")
                 onTriggered: load();
             }
             MenuItem {
@@ -49,12 +55,12 @@ ApplicationWindow {
                 onTriggered: highlight_color.open();
             }
             MenuItem {
-                text: qsTr("E&xit")
-                onTriggered: Qt.quit();
+                text: "Settings"
+                onTriggered: settings.open();
             }
             MenuItem {
-                text: "settings"
-                onTriggered: settings.open();
+                text: qsTr("E&xit")
+                onTriggered: Qt.quit();
             }
         }
     }
@@ -85,7 +91,12 @@ ApplicationWindow {
         standardButtons: StandardButton.Ok | StandardButton.Cancel
 
         GridLayout {
+            id: grid
             columns: 2
+            Label { text: "Spreadsheet ID" }
+            TextField {
+                id: spreadsheet_id_text
+            }
             Label { text: "Start Date" }
             TextField {
                 id: start_date_text
@@ -110,9 +121,75 @@ ApplicationWindow {
         text: "No orders found"
     }
 
+    MessageDialog {
+        id: spreadsheetLoadFailedDialog
+        title: "spreadsheet failed to load"
+        text: "spreadsheet failed to load"
+    }
+
     SoundEffect {
         id: machine
         source: "machine.wav"
+    }
+
+    function load_sheet() {
+	balance.size = imageSize;
+	var endpoint = "https://spreadsheets.google.com/feeds/list/"+spreadsheet_id+"/od6/public/basic?alt=json";
+	var xmlhttp = new XMLHttpRequest();
+	xmlhttp.onreadystatechange = function() {
+	    if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+                balance.clear();
+                colors = {};
+
+		var data = JSON.parse(xmlhttp.responseText);
+		var entry = data.feed.entry;
+                if (entry.length === 0) {
+                    noDataDialog.open();
+                    return;
+                }
+
+		for (var i = 0; i < entry.length; i += 1) {
+		    var obj = {
+			name: entry[i].title.$t
+		    };
+		    var row = entry[i].content.$t;
+		    row = row.replace(/\s*/g,"");
+		    row = row.split(",");
+		    for (var j = 0; j < row.length; j += 1) {
+			var cell = row[j].split(":");
+			obj[cell[0]] = cell[1].replace(/^\$/,"");
+		    }
+		    console.log(JSON.stringify(obj));
+		    balance.addBox(obj.name, parseFloat(obj.amount));
+                    colors[obj.name] = obj.color;
+
+		    function add(x, y) {
+			if (obj[x] || obj[y]) {
+			    balance.addDesired(Qt.point(
+				parseFloat(obj[x]),
+				parseFloat(obj[y])));
+			    console.log(obj[x]);
+			    console.log(obj[y]);
+			} else {
+			    balance.addDesired(Qt.point(
+				Math.random()*imageSize.width,
+				Math.random()*imageSize.height));
+			}
+		    }
+		    add("x1", "y1");
+		    add("x2", "y2");
+		    add("x3", "y3");
+		}
+		console.log(JSON.stringify(colors));
+		balance.optimize();
+		machine.play();
+	    } else {
+                spreadsheetLoadFailedDialog.open();
+                return;
+            }
+	}
+	xmlhttp.open("GET", endpoint, true);
+	xmlhttp.send();
     }
 
     function load() {
@@ -190,8 +267,12 @@ ApplicationWindow {
         machine.play();
     }
 
-    function gray(index) {
-        return Qt.hsla(0, 0, (index % 8) / 8, 1)
+    function get_color(name, index) {
+        if (colors[name]) {
+            return colors[name];
+        } else {
+            return Qt.hsla(0, 0, (index % 8) / 8, 1);
+        }
     }
 
     Item {
@@ -242,18 +323,12 @@ ApplicationWindow {
                     anchors.fill: parent
                     hoverEnabled: true
                 }
-                color: mouseArea.containsMouse ? highlight_color.color : final_color.color
+                color: mouseArea.containsMouse ? highlight_color.color : get_color(name, index)
 
                 Behavior on x { SmoothedAnimation { duration: balance.interval } }
                 Behavior on y { SmoothedAnimation { duration: balance.interval } }
                 Behavior on width { SmoothedAnimation { duration: balance.interval } }
                 Behavior on height { SmoothedAnimation { duration: balance.interval } }
-
-                ColorAnimation on color {
-                    from: gray(index)
-                    to: final_color.color
-                    duration: time1
-                }
 
                 Label {
                     z: 10
@@ -311,8 +386,8 @@ ApplicationWindow {
 
                 SequentialAnimation on color {
                     ColorAnimation {
-                        from: gray(index)
-                        to: final_color.color
+                        from: "white"
+                        to: "white"
                         duration: time1
                     }
                     ColorAnimation {

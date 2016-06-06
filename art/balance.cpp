@@ -6,6 +6,7 @@
 #include <cmath>
 #include <iomanip>
 #include <fstream>
+#include <cstring>
 
 #include <time.h>
 

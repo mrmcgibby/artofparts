@@ -36,7 +36,7 @@ public:
 
     int interval() { return m_timer.interval(); }
     void setInterval(int interval);
-
+	
     QHash<int, QByteArray> roleNames() const;
 
 signals:

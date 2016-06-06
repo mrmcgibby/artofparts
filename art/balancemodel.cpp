@@ -42,30 +42,30 @@ QVariant BalanceModel::data(const QModelIndex& index, int role) const
     }
 
     switch (role) {
-        case Qt::DisplayRole: {
-            QRectF rval;
-            box b = m_best[index.row()];
-            rval.setX(b.origin(0));
-            rval.setY(b.origin(1));
-            rval.setWidth(b.extent(0));
-            rval.setHeight(b.extent(1));
-            return rval;
-        }
-        case Qt::UserRole+0: {
-            return QString(m_best[index.row()].name().c_str());
-        }
-        case Qt::UserRole+1: {
-            box b = m_best[index.row()];
-            if (b.contains_desired()) {
-                box::point d = b.desired();
-                return QPointF(d[0], d[1]);
-            } else {
-                return QPointF(0, 0);
-            }
-        }
-        default: {
-            return QVariant();
-        }
+	case Qt::DisplayRole: {
+		QRectF rval;
+		box b = m_best[index.row()];
+		rval.setX(b.origin(0));
+		rval.setY(b.origin(1));
+		rval.setWidth(b.extent(0));
+		rval.setHeight(b.extent(1));
+		return rval;
+	}
+	case Qt::UserRole+0: {
+		return QString(m_best[index.row()].name().c_str());
+	}
+	case Qt::UserRole+1: {
+		box b = m_best[index.row()];
+		if (b.contains_desired()) {
+			box::point d = b.desired();
+			return QPointF(d[0], d[1]);
+		} else {
+			return QPointF(0, 0);
+		}
+	}
+	default: {
+		return QVariant();
+	}
     }
 }
 
