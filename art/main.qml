@@ -16,7 +16,6 @@ ApplicationWindow {
     property int time2: 2000
     property date start_date: "2000-01-01"
     property date end_date: "2030-01-01"
-    property string spreadsheet_id: "1bUNb5hSefnILVJKG16X3cqgCXXU1Tkyn6eHzHpyP7F8"
     property var colors: []
 
     Settings {
@@ -24,7 +23,7 @@ ApplicationWindow {
         property alias s_label_color: label_color.color
         property alias s_border_color: border_color.color
         property alias s_highlight_color: highlight_color.color
-        property alias s_spreadsheet_id: settings.grid.spreadsheet_id_text.text
+        property alias s_spreadsheet_id: spreadsheet_id.text
     }
 
     menuBar: MenuBar {
@@ -89,13 +88,13 @@ ApplicationWindow {
         id: settings
         title: "Settings"
         standardButtons: StandardButton.Ok | StandardButton.Cancel
-
+        
         GridLayout {
-            id: grid
             columns: 2
             Label { text: "Spreadsheet ID" }
             TextField {
-                id: spreadsheet_id_text
+                id: spreadsheet_id
+                text: "1bUNb5hSefnILVJKG16X3cqgCXXU1Tkyn6eHzHpyP7F8"
             }
             Label { text: "Start Date" }
             TextField {
@@ -134,7 +133,8 @@ ApplicationWindow {
 
     function load_sheet() {
 	balance.size = imageSize;
-	var endpoint = "https://spreadsheets.google.com/feeds/list/"+spreadsheet_id+"/od6/public/basic?alt=json";
+	var endpoint = "https://spreadsheets.google.com/feeds/list/"+spreadsheet_id.text+"/od6/public/basic?alt=json";
+        console.log(endpoint);
 	var xmlhttp = new XMLHttpRequest();
 	xmlhttp.onreadystatechange = function() {
 	    if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
@@ -183,10 +183,7 @@ ApplicationWindow {
 		console.log(JSON.stringify(colors));
 		balance.optimize();
 		machine.play();
-	    } else {
-                spreadsheetLoadFailedDialog.open();
-                return;
-            }
+	    }
 	}
 	xmlhttp.open("GET", endpoint, true);
 	xmlhttp.send();
